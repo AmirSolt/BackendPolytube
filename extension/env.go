@@ -10,12 +10,16 @@ import (
 )
 
 type Env struct {
-	DOMAIN  string `validate:"url"`
-	IS_PROD bool   `validate:"boolean"`
+	DOMAIN          string `validate:"url"`
+	FRONTEND_DOMAIN string `validate:"url"`
+	IS_PROD         bool   `validate:"boolean"`
 
 	STRIPE_PUBLIC_KEY  string `validate:"required"`
 	STRIPE_PRIVATE_KEY string `validate:"required"`
 	STRIPE_WEBHOOK_KEY string `validate:"required"`
+
+	TIKTOK_CLIENT_KEY    string `validate:"required"`
+	TIKTOK_CLIENT_SECRET string `validate:"required"`
 
 	GLITCHTIP_DSN string `validate:"required"`
 }
@@ -27,12 +31,15 @@ func LoadEnv() *Env {
 	}
 
 	env := Env{
-		DOMAIN:             os.Getenv("DOMAIN"),
-		IS_PROD:            strToBool(os.Getenv("IS_PROD")),
-		STRIPE_PUBLIC_KEY:  os.Getenv("STRIPE_PUBLIC_KEY"),
-		STRIPE_PRIVATE_KEY: os.Getenv("STRIPE_PRIVATE_KEY"),
-		STRIPE_WEBHOOK_KEY: os.Getenv("STRIPE_WEBHOOK_KEY"),
-		GLITCHTIP_DSN:      os.Getenv("GLITCHTIP_DSN"),
+		DOMAIN:               os.Getenv("DOMAIN"),
+		FRONTEND_DOMAIN:      os.Getenv("FRONTEND_DOMAIN"),
+		IS_PROD:              strToBool(os.Getenv("IS_PROD")),
+		STRIPE_PUBLIC_KEY:    os.Getenv("STRIPE_PUBLIC_KEY"),
+		STRIPE_PRIVATE_KEY:   os.Getenv("STRIPE_PRIVATE_KEY"),
+		STRIPE_WEBHOOK_KEY:   os.Getenv("STRIPE_WEBHOOK_KEY"),
+		TIKTOK_CLIENT_KEY:    os.Getenv("TIKTOK_CLIENT_KEY"),
+		TIKTOK_CLIENT_SECRET: os.Getenv("TIKTOK_CLIENT_SECRET"),
+		GLITCHTIP_DSN:        os.Getenv("GLITCHTIP_DSN"),
 	}
 
 	validate := validator.New(validator.WithRequiredStructEnabled())

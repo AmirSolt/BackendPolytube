@@ -1,6 +1,7 @@
-package extension
+package payment
 
 import (
+	"basedpocket/extension"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,7 +16,7 @@ import (
 	"github.com/stripe/stripe-go/v76/webhook"
 )
 
-func HandleStripeWebhook(app core.App, ctx echo.Context, env *Env) error {
+func handleStripeWebhook(app core.App, ctx echo.Context, env *extension.Env) error {
 	// ==================================================================
 	// The signature check is pulled directly from Stripe and it's not tested
 	req := ctx.Request()

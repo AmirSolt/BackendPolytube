@@ -1,4 +1,4 @@
-package extension
+package payment
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"github.com/pocketbase/pocketbase/tools/types"
 )
 
-func CreateCustomersCollection(app core.App) {
+func createCustomersCollection(app core.App) {
 
 	collectionName := "customers"
 
