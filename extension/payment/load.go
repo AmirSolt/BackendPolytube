@@ -13,11 +13,12 @@ import (
 func LoadPayment(app *pocketbase.PocketBase, env *extension.Env) {
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+		// ===================
+		// collections
 		createCustomersCollection(e.App)
-		return nil
-	})
 
-	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+		// ===================
+		// routes
 		e.Router.AddRoute(echo.Route{
 			Method: http.MethodPost,
 			Path:   "/webhooks/stripe",

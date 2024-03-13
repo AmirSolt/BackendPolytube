@@ -14,8 +14,8 @@ func createCustomersCollection(app core.App) {
 
 	collectionName := "customers"
 
-	existingCustomers, _ := app.Dao().FindCollectionByNameOrId(collectionName)
-	if existingCustomers != nil {
+	existingCollection, _ := app.Dao().FindCollectionByNameOrId(collectionName)
+	if existingCollection != nil {
 		return
 	}
 
@@ -24,7 +24,7 @@ func createCustomersCollection(app core.App) {
 		log.Fatalf("users table not found: %+v", err)
 	}
 
-	customers := &models.Collection{
+	collection := &models.Collection{
 		Name:       collectionName,
 		Type:       models.CollectionTypeBase,
 		ListRule:   types.Pointer("user.id = @request.auth.id"),
@@ -67,7 +67,7 @@ func createCustomersCollection(app core.App) {
 		},
 	}
 
-	if err := app.Dao().SaveCollection(customers); err != nil {
-		log.Fatalf("customers collection failed: %+v", err)
+	if err := app.Dao().SaveCollection(collection); err != nil {
+		log.Fatalf("%s collection failed: %+v", collectionName, err)
 	}
 }

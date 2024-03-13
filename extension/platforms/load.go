@@ -8,7 +8,6 @@ import (
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/cron"
 )
 
 func LoadPlatforms(app *pocketbase.PocketBase, env *extension.Env) {
@@ -16,7 +15,15 @@ func LoadPlatforms(app *pocketbase.PocketBase, env *extension.Env) {
 }
 
 func loadTiktok(app *pocketbase.PocketBase, env *extension.Env) {
+
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+		// ===================
+		// collections
+		createTiktokOAuthCollection(e.App)
+		createTiktokActivityCollection(e.App)
+
+		// ===================
+		// routes
 		e.Router.AddRoute(echo.Route{
 			Method: http.MethodPost,
 			Path:   "/platforms/tiktok/oauth-request",
@@ -25,13 +32,10 @@ func loadTiktok(app *pocketbase.PocketBase, env *extension.Env) {
 			},
 			Middlewares: []echo.MiddlewareFunc{
 				apis.ActivityLogger(e.App),
+				apis.RequireRecordAuth("users"),
 			},
 		})
 
-		return nil
-	})
-
-	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		e.Router.AddRoute(echo.Route{
 			Method: http.MethodPost,
 			Path:   "/platforms/tiktok/oauth-success",
@@ -40,26 +44,10 @@ func loadTiktok(app *pocketbase.PocketBase, env *extension.Env) {
 			},
 			Middlewares: []echo.MiddlewareFunc{
 				apis.ActivityLogger(e.App),
+				apis.RequireRecordAuth("users"),
 			},
 		})
 
-		return nil
-	})
-
-	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
-		scheduler := cron.New()
-
-		// every 20 hours
-		scheduler.MustAdd("refresh-token", "* */20 * * *", func() {
-			handleRefreshToken(e.App, env)
-		})
-
-		scheduler.Start()
-
-		return nil
-	})
-
-	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		e.Router.AddRoute(echo.Route{
 			Method: http.MethodPost,
 			Path:   "/platforms/tiktok/revoke-token",
@@ -68,6 +56,7 @@ func loadTiktok(app *pocketbase.PocketBase, env *extension.Env) {
 			},
 			Middlewares: []echo.MiddlewareFunc{
 				apis.ActivityLogger(e.App),
+				apis.RequireRecordAuth("users"),
 			},
 		})
 

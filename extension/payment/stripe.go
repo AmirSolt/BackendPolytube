@@ -26,15 +26,15 @@ func handleStripeWebhook(app core.App, ctx echo.Context, env *extension.Env) err
 	req.Body = http.MaxBytesReader(res.Writer, req.Body, MaxBodyBytes)
 	payload, err := io.ReadAll(req.Body)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		ctx.String(http.StatusServiceUnavailable, fmt.Errorf("problem with request. EventID: %s", *eventId).Error())
+		eventID := sentry.CaptureException(err)
+		ctx.String(http.StatusServiceUnavailable, fmt.Errorf("problem with request. eventID: %s", *eventID).Error())
 		return err
 	}
 	endpointSecret := env.STRIPE_WEBHOOK_KEY
 	event, err := webhook.ConstructEvent(payload, req.Header.Get("Stripe-Signature"), endpointSecret)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		ctx.String(http.StatusBadRequest, fmt.Errorf("error verifying webhook signature. EventID: %s", *eventId).Error())
+		eventID := sentry.CaptureException(err)
+		ctx.String(http.StatusBadRequest, fmt.Errorf("error verifying webhook signature. eventID: %s", *eventID).Error())
 		return err
 	}
 	// ==================================================================
@@ -67,8 +67,8 @@ func handleStripeEvents(app core.App, event stripe.Event) error {
 	}
 
 	err := fmt.Errorf("unhandled stripe event type: %s\n", event.Type)
-	eventId := sentry.CaptureException(err)
-	return fmt.Errorf("unhandled stripe event type. EventID: %s", *eventId)
+	eventID := sentry.CaptureException(err)
+	return fmt.Errorf("unhandled stripe event type. eventID: %s", *eventID)
 }
 
 // ===============================================================================
@@ -76,20 +76,20 @@ func handleStripeEvents(app core.App, event stripe.Event) error {
 func handleCustomerCreatedEvent(app core.App, event stripe.Event) error {
 	stripeCustomer, err := getStripeCustomerFromObj(event.Data.Object)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 
 	user, err := app.Dao().FindFirstRecordByData("users", "email", stripeCustomer.Email)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 
 	customers, err := app.Dao().FindCollectionByNameOrId("customers")
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 	customer := models.NewRecord(customers)
 	customer.Set("user", user.Id)
@@ -97,8 +97,8 @@ func handleCustomerCreatedEvent(app core.App, event stripe.Event) error {
 	customer.Set("stripe_subscription_id", nil)
 	customer.Set("tier", 0)
 	if err := app.Dao().SaveRecord(customer); err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 	return nil
 }
@@ -108,14 +108,14 @@ func handleCustomerCreatedEvent(app core.App, event stripe.Event) error {
 func handleCustomerDeletedEvent(app core.App, event stripe.Event) error {
 	stripeCustomer, err := getStripeCustomerFromObj(event.Data.Object)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 
 	customer, err := app.Dao().FindFirstRecordByData("customers", "stripe_customer_id", stripeCustomer.ID)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 	if err := app.Dao().DeleteRecord(customer); err != nil {
 		return err
@@ -128,27 +128,27 @@ func handleCustomerDeletedEvent(app core.App, event stripe.Event) error {
 func handleSubscriptionCreatedEvent(app core.App, event stripe.Event) error {
 	stripeSubscription, err := getStripeSubscriptionFromObj(event.Data.Object)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 
 	tier, err := getSubscriptionTier(stripeSubscription)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 
 	customer, err := app.Dao().FindFirstRecordByData("customers", "stripe_customer_id", stripeSubscription.Customer.ID)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 
 	customer.Set("stripe_subscription_id", stripeSubscription.ID)
 	customer.Set("tier", tier)
 	if err := app.Dao().SaveRecord(customer); err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 	return nil
 }
@@ -158,26 +158,26 @@ func handleSubscriptionCreatedEvent(app core.App, event stripe.Event) error {
 func handleSubscriptionUpdatedEvent(app core.App, event stripe.Event) error {
 	stripeSubscription, err := getStripeSubscriptionFromObj(event.Data.Object)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 
 	tier, err := getSubscriptionTier(stripeSubscription)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 
 	customer, err := app.Dao().FindFirstRecordByData("customers", "stripe_subscription_id", stripeSubscription.ID)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 
 	customer.Set("tier", tier)
 	if err := app.Dao().SaveRecord(customer); err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 	return nil
 }
@@ -187,21 +187,21 @@ func handleSubscriptionUpdatedEvent(app core.App, event stripe.Event) error {
 func handleSubscriptionDeletedEvent(app core.App, event stripe.Event) error {
 	stripeSubscription, err := getStripeSubscriptionFromObj(event.Data.Object)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 
 	customer, err := app.Dao().FindFirstRecordByData("customers", "stripe_customer_id", stripeSubscription.Customer.ID)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 
 	customer.Set("stripe_subscription_id", nil)
 	customer.Set("tier", 0)
 	if err := app.Dao().SaveRecord(customer); err != nil {
-		eventId := sentry.CaptureException(err)
-		return fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 	return nil
 }
@@ -213,14 +213,14 @@ func handleSubscriptionDeletedEvent(app core.App, event stripe.Event) error {
 func getStripeCustomerFromObj(object map[string]interface{}) (*stripe.Customer, error) {
 	jsonCustomer, err := json.Marshal(object)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return nil, fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return nil, fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 	var stripeCustomer *stripe.Customer
 	err = json.Unmarshal(jsonCustomer, &stripeCustomer)
 	if stripeCustomer == nil || err != nil {
-		eventId := sentry.CaptureException(err)
-		return nil, fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return nil, fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 	return stripeCustomer, nil
 }
@@ -228,14 +228,14 @@ func getStripeCustomerFromObj(object map[string]interface{}) (*stripe.Customer, 
 func getStripeCheckoutSessionFromObj(object map[string]interface{}) (*stripe.CheckoutSession, error) {
 	jsonCustomer, err := json.Marshal(object)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return nil, fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return nil, fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 	var stripeStruct *stripe.CheckoutSession
 	err = json.Unmarshal(jsonCustomer, &stripeStruct)
 	if stripeStruct == nil || err != nil {
-		eventId := sentry.CaptureException(err)
-		return nil, fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return nil, fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 	return stripeStruct, nil
 }
@@ -243,14 +243,14 @@ func getStripeCheckoutSessionFromObj(object map[string]interface{}) (*stripe.Che
 func getStripeSubscriptionFromObj(object map[string]interface{}) (*stripe.Subscription, error) {
 	jsonCustomer, err := json.Marshal(object)
 	if err != nil {
-		eventId := sentry.CaptureException(err)
-		return nil, fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return nil, fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 	var stripeStruct *stripe.Subscription
 	err = json.Unmarshal(jsonCustomer, &stripeStruct)
 	if stripeStruct == nil || err != nil {
-		eventId := sentry.CaptureException(err)
-		return nil, fmt.Errorf("error handling stripe event. EventID: %s", *eventId)
+		eventID := sentry.CaptureException(err)
+		return nil, fmt.Errorf("error handling stripe event. eventID: %s", *eventID)
 	}
 	return stripeStruct, nil
 }
@@ -262,8 +262,8 @@ func getSubscriptionTier(subsc *stripe.Subscription) (int, error) {
 	subscTierStr := subsc.Items.Data[0].Price.Metadata["tier"]
 	subscTierInt, errTier := strconv.Atoi(subscTierStr)
 	if errTier != nil {
-		eventId := sentry.CaptureException(errTier)
-		return 0, fmt.Errorf("failed to convert tier (%v)", eventId)
+		eventID := sentry.CaptureException(errTier)
+		return 0, fmt.Errorf("failed to convert tier (%v)", eventID)
 	}
 	return subscTierInt, nil
 }
