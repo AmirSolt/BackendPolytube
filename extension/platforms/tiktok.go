@@ -79,6 +79,7 @@ func handleOAuthSuccess(app core.App, ctx echo.Context, env *extension.Env) erro
 
 // ====================================
 func handleRevokeToken(app core.App, ctx echo.Context, env *extension.Env) error {
+	platform_account_id := ctx.PathParam("platform_account_id")
 	// oath2.revokeAccessToken()
 	return ctx.String(http.StatusOK, "Hello, World!")
 }

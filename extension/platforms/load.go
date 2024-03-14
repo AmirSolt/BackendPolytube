@@ -51,7 +51,7 @@ func loadTiktok(app *pocketbase.PocketBase, env *extension.Env) {
 
 		e.Router.AddRoute(echo.Route{
 			Method: http.MethodPost,
-			Path:   "/platforms/tiktok/revoke-token",
+			Path:   "/platforms/tiktok/:platform_account_id/revoke-token",
 			Handler: func(c echo.Context) error {
 				return handleRevokeToken(e.App, c, env)
 			},
