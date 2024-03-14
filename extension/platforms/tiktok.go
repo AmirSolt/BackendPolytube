@@ -2,21 +2,19 @@ package platforms
 
 import (
 	"basedpocket/extension"
-	"bytes"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
+	"net/url"
 
+	"github.com/carlmjohnson/requests"
 	"github.com/getsentry/sentry-go"
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/daos"
 	"github.com/pocketbase/pocketbase/models"
-
 	"github.com/spf13/cast"
 )
 
@@ -79,9 +77,49 @@ func handleOAuthSuccess(app core.App, ctx echo.Context, env *extension.Env) erro
 
 // ====================================
 func handleRevokeToken(app core.App, ctx echo.Context, env *extension.Env) error {
-	platform_account_id := ctx.PathParam("platform_account_id")
-	// oath2.revokeAccessToken()
-	return ctx.String(http.StatusOK, "Hello, World!")
+
+	// ==========================
+	// get user
+	user := ctx.Get(apis.ContextAuthRecordKey).(*models.Record)
+	if user == nil {
+		err := fmt.Errorf("user not found")
+		eventID := sentry.CaptureException(err)
+		return ctx.JSON(http.StatusInternalServerError, extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)})
+	}
+
+	platformAccountId := ctx.PathParam("platform_account_id")
+	if platformAccountId == "" {
+		err := fmt.Errorf("platform_account_id is empty")
+		eventID := sentry.CaptureException(err)
+		return ctx.JSON(http.StatusInternalServerError, extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)})
+	}
+
+	account, err := getPlatformAccount(app, user, platformAccountId)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", err.EventID)})
+	}
+	oauth, errOauth := getOAuth(app, user, account)
+	if errOauth != nil {
+		return ctx.JSON(http.StatusInternalServerError, extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", errOauth.EventID)})
+	}
+
+	formData := url.Values{}
+	formData.Add("client_key", env.TIKTOK_CLIENT_KEY)
+	formData.Add("client_secret", env.TIKTOK_CLIENT_SECRET)
+	formData.Add("token", oauth.Get("access_token").(string))
+
+	errReq := requests.
+		URL("https://open.tiktokapis.com/v2/oauth/revoke/").
+		Method(http.MethodPost).
+		BodyForm(formData).
+		CheckStatus(http.StatusOK, http.StatusAccepted).
+		Fetch(ctx.Request().Context())
+	if errReq != nil {
+		eventID := sentry.CaptureException(errReq)
+		return ctx.JSON(http.StatusInternalServerError, extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)})
+	}
+
+	return ctx.NoContent(http.StatusOK)
 }
 
 // ====================================
@@ -100,55 +138,33 @@ type TikTokAccessTokenResponse struct {
 
 func fetchAndStoreAccessToken(app core.App, ctx echo.Context, env *extension.Env, code string) *extension.AppError {
 
-	formData := map[string]string{
-		"client_key":    env.TIKTOK_CLIENT_KEY,
-		"client_secret": env.TIKTOK_CLIENT_SECRET,
-		"code":          code,
-		"grant_type":    "authorization_code",
-		"redirect_uri":  fmt.Sprintf("%s/platforms/tiktok/oauth-success", env.DOMAIN),
-	}
+	formData := url.Values{}
+	formData.Add("client_key", env.TIKTOK_CLIENT_KEY)
+	formData.Add("client_secret", env.TIKTOK_CLIENT_SECRET)
+	formData.Add("code", code)
+	formData.Add("grant_type", "authorization_code")
+	formData.Add("redirect_uri", fmt.Sprintf("%s/platforms/tiktok/oauth-success", env.DOMAIN))
 
-	// Encode request body as url-encoded form
-	data, err := json.Marshal(formData)
-	if err != nil {
-		eventID := sentry.CaptureException(err)
-		return &extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
-	}
-
-	// POST request to TikTok API
-	req, err := http.NewRequest(http.MethodPost, "https://open.tiktokapis.com/v2/oauth/token/", bytes.NewBuffer(data))
-	req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationForm)
-	if err != nil {
-		eventID := sentry.CaptureException(err)
-		return &extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
-	}
-
-	client := &http.Client{}
-	resRaw, err := client.Do(req)
-	if err != nil {
-		eventID := sentry.CaptureException(err)
-		return &extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
-	}
-	defer resRaw.Body.Close()
-
-	if resRaw.StatusCode != http.StatusCreated {
-		eventID := sentry.CaptureException(err)
-		return &extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
-	}
 	res := &TikTokAccessTokenResponse{}
-	if err := json.NewDecoder(resRaw.Body).Decode(res); err != nil {
+	err := requests.
+		URL("https://open.tiktokapis.com/v2/oauth/token/").
+		Method(http.MethodPost).
+		BodyForm(formData).
+		ToJSON(&res).
+		Fetch(ctx.Request().Context())
+	if err != nil {
 		eventID := sentry.CaptureException(err)
 		return &extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
 	}
 
-	appError := upsertTiktokAccountInfo(app, ctx, env, res)
+	appError := upsertTiktokDBOnNewAccess(app, ctx, env, res)
 	if appError != nil {
 		return appError
 	}
 
 	return nil
 }
-func upsertTiktokAccountInfo(app core.App, ctx echo.Context, env *extension.Env, response *TikTokAccessTokenResponse) *extension.AppError {
+func upsertTiktokDBOnNewAccess(app core.App, ctx echo.Context, env *extension.Env, response *TikTokAccessTokenResponse) *extension.AppError {
 	// ==========================
 	// get user
 	user := ctx.Get(apis.ContextAuthRecordKey).(*models.Record)
@@ -173,17 +189,9 @@ func upsertTiktokAccountInfo(app core.App, ctx echo.Context, env *extension.Env,
 		// start transaction
 		err := app.Dao().RunInTransaction(func(txDao *daos.Dao) error {
 
-			// ========================
-			// if account access is not expired, make activity status warning
-			isAccountAccessExpired := time.Now().After(account.Get("access_expires_in").(time.Time))
-			activityStatus := SuccessStatus
-			if !isAccountAccessExpired {
-				activityStatus = WarningStatus
-			}
-
 			// ==========================
 			// update platform account
-			appError := updatePlatformAccount(app, account, response)
+			appError := updatePlatformAccount(app, user, account, response)
 			if appError != nil {
 				return fmt.Errorf("points to eventID: %s", appError.EventID)
 			}
@@ -191,14 +199,14 @@ func upsertTiktokAccountInfo(app core.App, ctx echo.Context, env *extension.Env,
 				PlatformAccountID: account.Id,
 				Title:             "Tiktok Internal Account Updated",
 				Message:           "N/A",
-				Status:            activityStatus,
+				Status:            SuccessStatus,
 			})
 			if appErr != nil {
 				return fmt.Errorf("points to eventID: %s", appErr.EventID)
 			}
 			// ==========================
 			// update platform account
-			oauthError := updateOAuth(app, account, response)
+			oauthError := updateOAuth(app, user, account, response)
 			if oauthError != nil {
 				return fmt.Errorf("points to eventID: %s", oauthError.EventID)
 			}
@@ -206,7 +214,7 @@ func upsertTiktokAccountInfo(app core.App, ctx echo.Context, env *extension.Env,
 				PlatformAccountID: account.Id,
 				Title:             "Tiktok Permission Updated",
 				Message:           "N/A",
-				Status:            activityStatus,
+				Status:            SuccessStatus,
 			})
 			if accErr != nil {
 				return fmt.Errorf("points to eventID: %s", appErr.EventID)
@@ -216,6 +224,12 @@ func upsertTiktokAccountInfo(app core.App, ctx echo.Context, env *extension.Env,
 		})
 
 		if err != nil {
+			InsertPlatformActivity(app, ctx, AcitvityParams{
+				PlatformAccountID: account.Id,
+				Title:             "Tiktok Permission Update Failed",
+				Message:           "Please try again",
+				Status:            ErrorStatus,
+			})
 			eventID := sentry.CaptureException(err)
 			return &extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
 		}
@@ -260,6 +274,12 @@ func upsertTiktokAccountInfo(app core.App, ctx echo.Context, env *extension.Env,
 		})
 
 		if err != nil {
+			InsertPlatformActivity(app, ctx, AcitvityParams{
+				PlatformAccountID: account.Id,
+				Title:             "Tiktok Permission Creation Failed",
+				Message:           "Please try again",
+				Status:            ErrorStatus,
+			})
 			eventID := sentry.CaptureException(err)
 			return &extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
 		}
@@ -270,20 +290,61 @@ func upsertTiktokAccountInfo(app core.App, ctx echo.Context, env *extension.Env,
 }
 
 // ====================================
-func refreshAccessToken(app core.App, ctx echo.Context, env *extension.Env) error {
+func refreshAccessToken(app core.App, ctx echo.Context, env *extension.Env, account *models.Record) *extension.AppError {
+	// ==========================
+	// get user
+	user := ctx.Get(apis.ContextAuthRecordKey).(*models.Record)
+	if user == nil {
+		err := fmt.Errorf("user not found")
+		eventID := sentry.CaptureException(err)
+		return &extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
+	}
 
-	return ctx.String(http.StatusOK, "Hello, World!")
+	oauth, errOauth := getOAuth(app, user, account)
+	if errOauth != nil {
+		return nil
+	}
+
+	formData := url.Values{}
+	formData.Add("client_key", env.TIKTOK_CLIENT_KEY)
+	formData.Add("client_secret", env.TIKTOK_CLIENT_SECRET)
+	formData.Add("grant_type", "refresh_token")
+	formData.Add("refresh_token", oauth.Get("refresh_token").(string))
+
+	res := &TikTokAccessTokenResponse{}
+	err := requests.
+		URL("https://open.tiktokapis.com/v2/oauth/token/").
+		Method(http.MethodPost).
+		BodyForm(formData).
+		ToJSON(&res).
+		Fetch(ctx.Request().Context())
+	if err != nil {
+		eventID := sentry.CaptureException(err)
+		return &extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
+	}
+
+	appError := upsertTiktokDBOnNewAccess(app, ctx, env, res)
+	if appError != nil {
+		return appError
+	}
+
+	return nil
 }
 
 // ====================================
-func revokeAccessToken(app core.App, ctx echo.Context, env *extension.Env) error {
+// ====================================
+// ====================================
 
-	return ctx.String(http.StatusOK, "Hello, World!")
+func getPlatformAccount(app core.App, user *models.Record, accountID string) (*models.Record, *extension.AppError) {
+	record, err := app.Dao().FindFirstRecordByFilter("platform_accounts",
+		fmt.Sprintf("id = '%s' && user = '%s'", accountID, user.Id),
+	)
+	if err != nil {
+		eventID := sentry.CaptureException(err)
+		return nil, &extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
+	}
+	return record, nil
 }
-
-// ====================================
-// ====================================
-// ====================================
 func insertPlatformAccount(app core.App, user *models.Record, response *TikTokAccessTokenResponse) (*models.Record, *extension.AppError) {
 	collection, err := app.Dao().FindCollectionByNameOrId("platform_accounts")
 	if err != nil {
@@ -303,9 +364,9 @@ func insertPlatformAccount(app core.App, user *models.Record, response *TikTokAc
 	}
 	return record, nil
 }
-func updatePlatformAccount(app core.App, account *models.Record, response *TikTokAccessTokenResponse) *extension.AppError {
+func updatePlatformAccount(app core.App, user *models.Record, account *models.Record, response *TikTokAccessTokenResponse) *extension.AppError {
 	record, err := app.Dao().FindFirstRecordByFilter("platform_accounts",
-		fmt.Sprintf("id = '%s'", account.Id),
+		fmt.Sprintf("id = '%s' && user = '%s'", account.Id, user.Id),
 	)
 	if err != nil {
 		eventID := sentry.CaptureException(err)
@@ -317,6 +378,16 @@ func updatePlatformAccount(app core.App, account *models.Record, response *TikTo
 		return &extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
 	}
 	return nil
+}
+func getOAuth(app core.App, user *models.Record, account *models.Record) (*models.Record, *extension.AppError) {
+	tiktokOauth, err := app.Dao().FindFirstRecordByFilter("oauths",
+		fmt.Sprintf("platform_account = '%s' && user = '%s'", account.Id, user.Id),
+	)
+	if err != nil {
+		eventID := sentry.CaptureException(err)
+		return nil, &extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
+	}
+	return tiktokOauth, nil
 }
 func insertOAuth(app core.App, user *models.Record, account *models.Record, response *TikTokAccessTokenResponse) *extension.AppError {
 	tiktokOauthCollection, err := app.Dao().FindCollectionByNameOrId("oauths")
@@ -340,9 +411,9 @@ func insertOAuth(app core.App, user *models.Record, account *models.Record, resp
 	}
 	return nil
 }
-func updateOAuth(app core.App, account *models.Record, response *TikTokAccessTokenResponse) *extension.AppError {
+func updateOAuth(app core.App, user *models.Record, account *models.Record, response *TikTokAccessTokenResponse) *extension.AppError {
 	tiktokOauth, err := app.Dao().FindFirstRecordByFilter("oauths",
-		fmt.Sprintf("platform_account = '%s'", account.Id),
+		fmt.Sprintf("platform_account = '%s' && user = '%s'", account.Id, user.Id),
 	)
 	if err != nil {
 		eventID := sentry.CaptureException(err)

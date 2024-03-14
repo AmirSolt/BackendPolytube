@@ -3,11 +3,13 @@ module basedpocket
 go 1.21.6
 
 require (
+	github.com/carlmjohnson/requests v0.23.5
 	github.com/getsentry/sentry-go v0.27.0
 	github.com/go-playground/validator/v10 v10.19.0
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v5 v5.0.0-20230722203903-ec5b858dab61
 	github.com/pocketbase/pocketbase v0.22.2
+	github.com/spf13/cast v1.6.0
 	github.com/stripe/stripe-go/v76 v76.19.0
 )
 
@@ -62,7 +64,6 @@ require (
 	github.com/ncruces/go-strftime v0.1.9 // indirect
 	github.com/pocketbase/dbx v1.10.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
