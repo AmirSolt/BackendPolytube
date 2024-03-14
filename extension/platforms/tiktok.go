@@ -140,14 +140,14 @@ func fetchAndStoreAccessToken(app core.App, ctx echo.Context, env *extension.Env
 		return &extension.AppError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
 	}
 
-	appError := upsertTiktokOAuth(app, ctx, env, res)
+	appError := upsertTiktokAccountInfo(app, ctx, env, res)
 	if appError != nil {
 		return appError
 	}
 
 	return nil
 }
-func upsertTiktokOAuth(app core.App, ctx echo.Context, env *extension.Env, response *TikTokAccessTokenResponse) *extension.AppError {
+func upsertTiktokAccountInfo(app core.App, ctx echo.Context, env *extension.Env, response *TikTokAccessTokenResponse) *extension.AppError {
 	// ==========================
 	// get user
 	user := ctx.Get(apis.ContextAuthRecordKey).(*models.Record)

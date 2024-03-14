@@ -64,7 +64,7 @@ func createPlatformCollection(app core.App) {
 			&schema.SchemaField{
 				Name:     "access_expires_in",
 				Type:     schema.FieldTypeDate,
-				Required: true,
+				Required: false,
 				Options:  &schema.TextOptions{},
 			},
 		),

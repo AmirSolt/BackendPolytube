@@ -19,6 +19,7 @@ func loadTiktok(app *pocketbase.PocketBase, env *extension.Env) {
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		// ===================
 		// collections
+		createPlatformCollection(e.App)
 		createOAuth2Collection(e.App)
 		createPlatformActivityCollection(e.App)
 
