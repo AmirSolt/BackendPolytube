@@ -1,4 +1,4 @@
-package payment
+package models
 
 import (
 	"fmt"
@@ -10,9 +10,9 @@ import (
 	"github.com/pocketbase/pocketbase/tools/types"
 )
 
-func createCustomersCollection(app core.App) {
+func createPlatformActivityCollection(app core.App) {
 
-	collectionName := "customers"
+	collectionName := "channel_activities"
 
 	existingCollection, _ := app.Dao().FindCollectionByNameOrId(collectionName)
 	if existingCollection != nil {
@@ -22,6 +22,11 @@ func createCustomersCollection(app core.App) {
 	users, err := app.Dao().FindCollectionByNameOrId("users")
 	if err != nil {
 		log.Fatalf("users table not found: %+v", err)
+	}
+
+	channels, err := app.Dao().FindCollectionByNameOrId("channels")
+	if err != nil {
+		log.Fatalf("channels table not found: %+v", err)
 	}
 
 	collection := &models.Collection{
@@ -44,22 +49,32 @@ func createCustomersCollection(app core.App) {
 				},
 			},
 			&schema.SchemaField{
-				Name:     "stripe_customer_id",
+				Name:     "channel",
+				Type:     schema.FieldTypeRelation,
+				Required: true,
+				Options: &schema.RelationOptions{
+					MaxSelect:     types.Pointer(1),
+					CollectionId:  channels.Id,
+					CascadeDelete: true,
+				},
+			},
+			&schema.SchemaField{
+				Name:     "title",
 				Type:     schema.FieldTypeText,
 				Required: true,
 				Options:  &schema.TextOptions{},
 			},
 			&schema.SchemaField{
-				Name:     "stripe_subscription_id",
+				Name:     "message",
 				Type:     schema.FieldTypeText,
-				Required: false,
+				Required: true,
 				Options:  &schema.TextOptions{},
 			},
 			&schema.SchemaField{
-				Name:     "tier",
-				Type:     schema.FieldTypeNumber,
+				Name:     "status",
+				Type:     schema.FieldTypeText,
 				Required: true,
-				Options:  &schema.NumberOptions{NoDecimal: true},
+				Options:  &schema.TextOptions{},
 			},
 		),
 		Indexes: types.JsonArray[string]{

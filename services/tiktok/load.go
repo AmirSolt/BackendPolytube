@@ -1,7 +1,8 @@
-package platforms
+package tiktok
 
 import (
 	"basedpocket/extension"
+	"basedpocket/extension/platforms/tiktok"
 	"net/http"
 
 	"github.com/labstack/echo/v5"
@@ -10,26 +11,16 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
-func LoadPlatforms(app *pocketbase.PocketBase, env *extension.Env) {
-	loadTiktok(app, env)
-}
-
-func loadTiktok(app *pocketbase.PocketBase, env *extension.Env) {
+func LoadTiktok(app *pocketbase.PocketBase, env *extension.Env) {
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
-		// ===================
-		// collections
-		createPlatformCollection(e.App)
-		createOAuth2Collection(e.App)
-		createPlatformActivityCollection(e.App)
-
 		// ===================
 		// routes
 		e.Router.AddRoute(echo.Route{
 			Method: http.MethodPost,
 			Path:   "/platforms/tiktok/oauth-request",
 			Handler: func(c echo.Context) error {
-				return handleOAuthRequest(e.App, c, env)
+				return tiktok.HandleOAuthRequest(e.App, c, env)
 			},
 			Middlewares: []echo.MiddlewareFunc{
 				apis.ActivityLogger(e.App),
@@ -41,7 +32,7 @@ func loadTiktok(app *pocketbase.PocketBase, env *extension.Env) {
 			Method: http.MethodPost,
 			Path:   "/platforms/tiktok/oauth-success",
 			Handler: func(c echo.Context) error {
-				return handleOAuthSuccess(e.App, c, env)
+				return tiktok.HandleOAuthSuccess(e.App, c, env)
 			},
 			Middlewares: []echo.MiddlewareFunc{
 				apis.ActivityLogger(e.App),
@@ -53,7 +44,7 @@ func loadTiktok(app *pocketbase.PocketBase, env *extension.Env) {
 			Method: http.MethodPost,
 			Path:   "/platforms/tiktok/:platform_account_id/revoke-token",
 			Handler: func(c echo.Context) error {
-				return handleRevokeToken(e.App, c, env)
+				return tiktok.HandleRevokeToken(e.App, c, env)
 			},
 			Middlewares: []echo.MiddlewareFunc{
 				apis.ActivityLogger(e.App),

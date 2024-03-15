@@ -1,15 +1,10 @@
-package extension
+package base
 
 import (
 	"log"
 
 	"github.com/getsentry/sentry-go"
 )
-
-type AppError struct {
-	Message string `json:"message"`
-	EventID string `json:"eventID"`
-}
 
 func LoadLogging(env *Env) {
 	err := sentry.Init(sentry.ClientOptions{

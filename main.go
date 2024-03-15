@@ -1,9 +1,9 @@
 package main
 
 import (
-	"basedpocket/extension"
-	"basedpocket/extension/payment"
-	"basedpocket/extension/platforms"
+	"basedpocket/base"
+	"basedpocket/services/payment"
+	"basedpocket/services/tiktok"
 	"log"
 
 	"github.com/pocketbase/pocketbase"
@@ -14,13 +14,13 @@ import (
 
 func main() {
 
-	env := extension.LoadEnv()
-	extension.LoadLogging(env)
+	env := base.LoadEnv()
+	base.LoadLogging(env)
 
 	app := pocketbase.New()
 
 	payment.LoadPayment(app, env)
-	platforms.LoadPlatforms(app, env)
+	tiktok.LoadTiktok(app, env)
 
 	if err := app.Start(); err != nil {
 		log.Fatal(err)
