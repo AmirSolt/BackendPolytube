@@ -13,10 +13,8 @@ import (
 //
 
 func main() {
-
 	env := base.LoadEnv()
 	base.LoadLogging(env)
-
 	app := pocketbase.New()
 
 	payment.LoadPayment(app, env)

@@ -16,7 +16,4 @@ func LoadLogging(env *Env) {
 	if err != nil {
 		log.Fatalf("sentry.Init: %s", err)
 	}
-
-	// base.Engine.Use(SentryGinNew(SentryGinOptions{}))
-
 }
