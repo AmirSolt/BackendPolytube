@@ -13,31 +13,34 @@ import (
 	"github.com/pocketbase/pocketbase/tools/types"
 )
 
-const customers string = "customers"
+const dubjobs string = "dubjobs"
 
-var _ models.Model = (*Customer)(nil)
+var _ models.Model = (*Dubjob)(nil)
 
-type Customer struct {
+type Dubjob struct {
 	models.BaseModel
-	User                 string `db:"user" json:"user"`
-	StripeCustomerID     string `db:"stripe_customer_id" json:"stripe_customer_id"`
-	StripeSubscriptionID string `db:"stripe_subscription_id" json:"stripe_subscription_id"`
-	Tier                 int    `db:"tier" json:"tier"`
+	User            string          `db:"user" json:"user"`
+	Channel         string          `db:"channel" json:"channel"`
+	SourceURL       string          `db:"source_url" json:"source_url"`
+	TargetLanguage  string          `db:"target_language" json:"target_language"`
+	ExternalID      string          `db:"external_id" json:"external_id"`
+	ExpectedReadyIn *types.DateTime `db:"expected_ready_in" json:"expected_ready_in"`
+	OutputURL       string          `db:"output_url" json:"output_url"`
+	FinishedIn      *types.DateTime `db:"finished_in" json:"finished_in"`
 }
-type FindCustomerParams struct {
-	Id                   string `db:"id"`
-	User                 string `db:"user"`
-	StripeCustomerID     string `db:"stripe_customer_id"`
-	StripeSubscriptionID string `db:"stripe_subscription_id"`
+type FindDubjobParams struct {
+	Id         string `db:"id"`
+	User       string `db:"user"`
+	ExternalID string `db:"external_id"`
 }
 
-func (m *Customer) TableName() string {
-	return customers // the name of your collection
+func (m *Dubjob) TableName() string {
+	return dubjobs // the name of your collection
 }
 
 // ===================================
 
-func (customer *Customer) FindCustomer(app core.App, params *FindCustomerParams) *utils.CError {
+func (dubjob *Dubjob) FindDubjob(app core.App, params *FindDubjobParams) *utils.CError {
 
 	query := dbx.HashExp{}
 	if params.Id != "" {
@@ -46,17 +49,14 @@ func (customer *Customer) FindCustomer(app core.App, params *FindCustomerParams)
 	if params.User != "" {
 		query["user"] = params.User
 	}
-	if params.StripeCustomerID != "" {
-		query["stripe_customer_id"] = params.StripeCustomerID
-	}
-	if params.StripeSubscriptionID != "" {
-		query["stripe_subscription_id"] = params.StripeSubscriptionID
+	if params.ExternalID != "" {
+		query["external_id"] = params.ExternalID
 	}
 
 	err := app.Dao().ModelQuery(&Channel{}).
 		AndWhere(query).
 		Limit(1).
-		One(customer)
+		One(dubjob)
 
 	if err != nil {
 		eventID := sentry.CaptureException(err)
@@ -64,15 +64,8 @@ func (customer *Customer) FindCustomer(app core.App, params *FindCustomerParams)
 	}
 	return nil
 }
-func (customer *Customer) SaveCustomer(app core.App) *utils.CError {
-	if err := app.Dao().Save(customer); err != nil {
-		eventID := sentry.CaptureException(err)
-		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
-	}
-	return nil
-}
-func (customer *Customer) DeleteCustomer(app core.App) *utils.CError {
-	if err := app.Dao().Delete(customer); err != nil {
+func (dubjob *Dubjob) SaveDubjob(app core.App) *utils.CError {
+	if err := app.Dao().Save(dubjob); err != nil {
 		eventID := sentry.CaptureException(err)
 		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
 	}
@@ -81,11 +74,9 @@ func (customer *Customer) DeleteCustomer(app core.App) *utils.CError {
 
 // ============================================
 
-// =======================================
+func createDubjobCollection(app core.App) {
 
-func createCustomersCollection(app core.App) {
-
-	collectionName := customers
+	collectionName := dubjobs
 
 	existingCollection, _ := app.Dao().FindCollectionByNameOrId(collectionName)
 	if existingCollection != nil {
@@ -95,6 +86,11 @@ func createCustomersCollection(app core.App) {
 	users, err := app.Dao().FindCollectionByNameOrId(users)
 	if err != nil {
 		log.Fatalf("users table not found: %+v", err)
+	}
+
+	channels, err := app.Dao().FindCollectionByNameOrId(channels)
+	if err != nil {
+		log.Fatalf("channels table not found: %+v", err)
 	}
 
 	collection := &models.Collection{
@@ -117,22 +113,50 @@ func createCustomersCollection(app core.App) {
 				},
 			},
 			&schema.SchemaField{
-				Name:     "stripe_customer_id",
+				Name:     "channel",
+				Type:     schema.FieldTypeRelation,
+				Required: true,
+				Options: &schema.RelationOptions{
+					MaxSelect:     types.Pointer(1),
+					CollectionId:  channels.Id,
+					CascadeDelete: true,
+				},
+			},
+			&schema.SchemaField{
+				Name:     "source_url",
+				Type:     schema.FieldTypeUrl,
+				Required: true,
+				Options:  &schema.TextOptions{},
+			},
+			&schema.SchemaField{
+				Name:     "target_language",
 				Type:     schema.FieldTypeText,
 				Required: true,
 				Options:  &schema.TextOptions{},
 			},
 			&schema.SchemaField{
-				Name:     "stripe_subscription_id",
+				Name:     "external_id",
 				Type:     schema.FieldTypeText,
+				Required: true,
+				Options:  &schema.TextOptions{},
+			},
+			&schema.SchemaField{
+				Name:     "expected_ready_in",
+				Type:     schema.FieldTypeDate,
+				Required: true,
+				Options:  &schema.TextOptions{},
+			},
+			&schema.SchemaField{
+				Name:     "output_url",
+				Type:     schema.FieldTypeUrl,
 				Required: false,
 				Options:  &schema.TextOptions{},
 			},
 			&schema.SchemaField{
-				Name:     "tier",
-				Type:     schema.FieldTypeNumber,
-				Required: true,
-				Options:  &schema.NumberOptions{NoDecimal: true},
+				Name:     "finished_in",
+				Type:     schema.FieldTypeDate,
+				Required: false,
+				Options:  &schema.TextOptions{},
 			},
 		),
 		Indexes: types.JsonArray[string]{

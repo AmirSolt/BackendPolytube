@@ -21,6 +21,8 @@ type Env struct {
 	TIKTOK_CLIENT_KEY    string `validate:"required"`
 	TIKTOK_CLIENT_SECRET string `validate:"required"`
 
+	ELEVENLABS_API_KEY string `validate:"required"`
+
 	GLITCHTIP_DSN string `validate:"required"`
 }
 
@@ -39,6 +41,7 @@ func LoadEnv() *Env {
 		STRIPE_WEBHOOK_KEY:   os.Getenv("STRIPE_WEBHOOK_KEY"),
 		TIKTOK_CLIENT_KEY:    os.Getenv("TIKTOK_CLIENT_KEY"),
 		TIKTOK_CLIENT_SECRET: os.Getenv("TIKTOK_CLIENT_SECRET"),
+		ELEVENLABS_API_KEY:   os.Getenv("ELEVENLABS_API_KEY"),
 		GLITCHTIP_DSN:        os.Getenv("GLITCHTIP_DSN"),
 	}
 

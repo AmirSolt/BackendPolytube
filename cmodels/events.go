@@ -13,52 +13,52 @@ import (
 	"github.com/pocketbase/pocketbase/tools/types"
 )
 
-type AcitvityParams struct {
+type EventParams struct {
 	PlatformAccountID string
 	ExternalAccountID string
 	Title             string
 	Message           string
-	Status            ActivityStatus
+	Status            EventStatus
 }
 
-type ActivityStatus string
+type EventStatus string
 
-const PrimaryStatus ActivityStatus = "primary"
-const SecondaryStatus ActivityStatus = "secondary"
-const TertiaryStatus ActivityStatus = "tertiary"
-const SuccessStatus ActivityStatus = "success"
-const WarningStatus ActivityStatus = "warning"
-const ErrorStatus ActivityStatus = "error"
-const SurfaceStatus ActivityStatus = "surface"
+const PrimaryStatus EventStatus = "primary"
+const SecondaryStatus EventStatus = "secondary"
+const TertiaryStatus EventStatus = "tertiary"
+const SuccessStatus EventStatus = "success"
+const WarningStatus EventStatus = "warning"
+const ErrorStatus EventStatus = "error"
+const SurfaceStatus EventStatus = "surface"
 
 // ===================================
 // ===================================
 // ===================================
 
-const activities string = "activities"
+const events string = "events"
 
-var _ models.Model = (*Activity)(nil)
+var _ models.Model = (*Event)(nil)
 
-type Activity struct {
+type Event struct {
 	models.BaseModel
 	User    string `db:"user" json:"user"`
 	Channel string `db:"channel" json:"channel"`
 	Message string `db:"message" json:"message"`
 	Status  string `db:"status" json:"status"`
 }
-type FindActivityParams struct {
+type FindEventParams struct {
 	Id      string `db:"id"`
 	User    string `db:"user"`
 	Channel string `db:"channel"`
 }
 
-func (m *Activity) TableName() string {
-	return activities // the name of your collection
+func (m *Event) TableName() string {
+	return events // the name of your collection
 }
 
 // ===================================
 
-func (activity *Activity) FindActivity(app core.App, params *FindActivityParams) *utils.CError {
+func (event *Event) FindEvent(app core.App, params *FindEventParams) *utils.CError {
 
 	query := dbx.HashExp{}
 	if params.Id != "" {
@@ -74,7 +74,7 @@ func (activity *Activity) FindActivity(app core.App, params *FindActivityParams)
 	err := app.Dao().ModelQuery(&Channel{}).
 		AndWhere(query).
 		Limit(1).
-		One(activity)
+		One(event)
 
 	if err != nil {
 		eventID := sentry.CaptureException(err)
@@ -82,8 +82,8 @@ func (activity *Activity) FindActivity(app core.App, params *FindActivityParams)
 	}
 	return nil
 }
-func (activity *Activity) SaveActivity(app core.App) *utils.CError {
-	if err := app.Dao().Save(activity); err != nil {
+func (event *Event) SaveEvent(app core.App) *utils.CError {
+	if err := app.Dao().Save(event); err != nil {
 		eventID := sentry.CaptureException(err)
 		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
 	}
@@ -92,9 +92,9 @@ func (activity *Activity) SaveActivity(app core.App) *utils.CError {
 
 // ============================================
 
-func createActivityCollection(app core.App) {
+func createEventCollection(app core.App) {
 
-	collectionName := activities
+	collectionName := events
 
 	existingCollection, _ := app.Dao().FindCollectionByNameOrId(collectionName)
 	if existingCollection != nil {
@@ -139,12 +139,6 @@ func createActivityCollection(app core.App) {
 					CollectionId:  channels.Id,
 					CascadeDelete: true,
 				},
-			},
-			&schema.SchemaField{
-				Name:     "title",
-				Type:     schema.FieldTypeText,
-				Required: true,
-				Options:  &schema.TextOptions{},
 			},
 			&schema.SchemaField{
 				Name:     "message",
