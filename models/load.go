@@ -1,8 +1,6 @@
 package models
 
 import (
-	"basedpocket/extension"
-
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 )

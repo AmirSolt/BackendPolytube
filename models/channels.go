@@ -20,11 +20,21 @@ var _ models.Model = (*Channel)(nil)
 
 type Channel struct {
 	models.BaseModel
-	User              string `db:"user" json:"user"`
-	PlatformName      string `db:"platform_name" json:"platform_name"`
-	ExternalAccountID string `db:"external_account_id" json:"external_account_id"`
-	AccessCanExpire   bool   `db:"access_can_expire" json:"access_can_expire"`
-	AccessExpiresIn   string `db:"access_expires_in" json:"access_expires_in"`
+	User            string          `db:"user" json:"user"`
+	PlatformName    string          `db:"platform_name" json:"platform_name"`
+	ExternalID      string          `db:"external_id" json:"external_id"`
+	AccessExpiresIn *types.DateTime `db:"access_expires_in" json:"access_expires_in"`
+}
+type InsertChannelParams struct {
+	User            string          `db:"user"`
+	PlatformName    string          `db:"platform_name"`
+	ExternalID      string          `db:"external_id"`
+	AccessExpiresIn *types.DateTime `db:"access_expires_in"`
+}
+type GetChannelParams struct {
+	Id         string `db:"id"`
+	User       string `db:"user"`
+	ExternalID string `db:"external_id"`
 }
 
 func (m *Channel) TableName() string {
@@ -33,14 +43,19 @@ func (m *Channel) TableName() string {
 
 // ===================================
 
-// Identity params include all parameters that you could/should use to fetch the record
-type PlatformAccountIdentityParams struct {
-	Id                string `db:"id" json:"id"`
-	User              string `db:"user" json:"user"`
-	ExternalAccountID string `db:"external_account_id" json:"external_account_id"`
+func InsertChannel(app core.App, params *InsertChannelParams) (*Channel, *utils.CError) {
+	record, err := insertRecord(app, params, "channels")
+	if err != nil {
+		return nil, err
+	}
+	return record.(*Channel), nil
 }
 
-func (params *PlatformAccountIdentityParams) GetQueryStr() (string, *utils.CError) {
+// ===================================
+
+// Identity params include all parameters that you could/should use to fetch the record
+
+func GetChannelQueryStr(params *GetChannelParams) (string, *utils.CError) {
 	var queries []string
 
 	if params.User == "" {
@@ -129,12 +144,6 @@ func createChannelCollection(app core.App) {
 			&schema.SchemaField{
 				Name:     "external_id",
 				Type:     schema.FieldTypeText,
-				Required: true,
-				Options:  &schema.TextOptions{},
-			},
-			&schema.SchemaField{
-				Name:     "access_can_expire",
-				Type:     schema.FieldTypeBool,
 				Required: true,
 				Options:  &schema.TextOptions{},
 			},
