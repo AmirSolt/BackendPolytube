@@ -1,7 +1,7 @@
 package payment
 
 import (
-	"basedpocket/extension"
+	"basedpocket/base"
 	"net/http"
 
 	"github.com/labstack/echo/v5"
@@ -10,7 +10,7 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
-func LoadPayment(app *pocketbase.PocketBase, env *extension.Env) {
+func LoadPayment(app *pocketbase.PocketBase, env *base.Env) {
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		// ===================

@@ -10,6 +10,8 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
+// ==========================
+
 func GetFieldTag(obj interface{}, fieldName string, tagName string) (string, *CError) {
 	field, ok := reflect.TypeOf(obj).Elem().FieldByName(fieldName)
 	if !ok {
@@ -22,14 +24,7 @@ func GetFieldTag(obj interface{}, fieldName string, tagName string) (string, *CE
 
 // ==========================
 
-type PlatformName string
-
-const TikTokPlatform PlatformName = "tiktok"
-const YoutubePlatform PlatformName = "youtube"
-
-// ==========================
-
-func buildURLFromMap(baseURL string, queries map[string]string) (string, error) {
+func BuildURLFromMap(baseURL string, queries map[string]string) (string, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return "", err
@@ -44,7 +39,7 @@ func buildURLFromMap(baseURL string, queries map[string]string) (string, error) 
 	return u.String(), nil
 }
 
-func generateCSRFState() (string, error) {
+func GenerateCSRFState() (string, error) {
 	// Create a byte slice to hold the random bytes
 	b := make([]byte, 16)
 	_, err := rand.Read(b)
@@ -56,24 +51,6 @@ func generateCSRFState() (string, error) {
 }
 
 // ==========================
-
-type AcitvityParams struct {
-	PlatformAccountID string
-	ExternalAccountID string
-	Title             string
-	Message           string
-	Status            ActivityStatus
-}
-
-type ActivityStatus string
-
-const PrimaryStatus ActivityStatus = "primary"
-const SecondaryStatus ActivityStatus = "secondary"
-const TertiaryStatus ActivityStatus = "tertiary"
-const SuccessStatus ActivityStatus = "success"
-const WarningStatus ActivityStatus = "warning"
-const ErrorStatus ActivityStatus = "error"
-const SurfaceStatus ActivityStatus = "surface"
 
 // func InsertPlatformActivity(app core.App, ctx echo.Context, actParams AcitvityParams) *utils.CError {
 // 	// ============================

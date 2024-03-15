@@ -1,13 +1,12 @@
-package models
+package cmodels
 
 import (
 	"basedpocket/utils"
 	"fmt"
 	"log"
-	"reflect"
-	"strings"
 
 	"github.com/getsentry/sentry-go"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/models"
 	"github.com/pocketbase/pocketbase/models/schema"
@@ -25,13 +24,7 @@ type Channel struct {
 	ExternalID      string          `db:"external_id" json:"external_id"`
 	AccessExpiresIn *types.DateTime `db:"access_expires_in" json:"access_expires_in"`
 }
-type InsertChannelParams struct {
-	User            string          `db:"user"`
-	PlatformName    string          `db:"platform_name"`
-	ExternalID      string          `db:"external_id"`
-	AccessExpiresIn *types.DateTime `db:"access_expires_in"`
-}
-type GetChannelParams struct {
+type FindChannelParams struct {
 	Id         string `db:"id"`
 	User       string `db:"user"`
 	ExternalID string `db:"external_id"`
@@ -43,61 +36,36 @@ func (m *Channel) TableName() string {
 
 // ===================================
 
-func InsertChannel(app core.App, params *InsertChannelParams) (*Channel, *utils.CError) {
-	record, err := insertRecord(app, params, "channels")
+func (channel *Channel) FindChannel(app core.App, params *FindChannelParams) *utils.CError {
+
+	query := dbx.HashExp{}
+	if params.Id != "" {
+		query["id"] = params.Id
+	}
+	if params.User != "" {
+		query["user"] = params.User
+	}
+	if params.ExternalID != "" {
+		query["external_id"] = params.ExternalID
+	}
+
+	err := app.Dao().ModelQuery(&Channel{}).
+		AndWhere(query).
+		Limit(1).
+		One(channel)
+
 	if err != nil {
-		return nil, err
-	}
-	return record.(*Channel), nil
-}
-
-// ===================================
-
-// Identity params include all parameters that you could/should use to fetch the record
-
-func GetChannelQueryStr(params *GetChannelParams) (string, *utils.CError) {
-	var queries []string
-
-	if params.User == "" {
-		err := fmt.Errorf("params.User cannot be empty")
 		eventID := sentry.CaptureException(err)
-		return "", &utils.CError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
+		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
 	}
-	tag, errTag := utils.GetFieldTag(params, "User", "db")
-	if errTag != nil {
-		return "", errTag
+	return nil
+}
+func (channel *Channel) SaveChannel(app core.App) *utils.CError {
+	if err := app.Dao().Save(channel); err != nil {
+		eventID := sentry.CaptureException(err)
+		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
 	}
-	queries = append(queries, fmt.Sprintf("%s=%s", tag, params.User))
-
-	// =======================
-
-	v := reflect.ValueOf(*params)
-	t := v.Type()
-
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		value := v.Field(i)
-
-		// Check for non-empty value (excluding zero values for numeric types)
-
-		if !utils.isEmptyValue(value) {
-			// Get the db tag (default to field name)
-			dbName := field.Tag.Get("db")
-			if dbName == "" {
-				dbName = field.Name
-			}
-
-			// Handle string values for proper quoting
-			if value.Kind() == reflect.String {
-				quotedValue := fmt.Sprintf("'%s'", value.String())
-				queries = append(queries, fmt.Sprintf("%s=%s", dbName, quotedValue))
-			} else {
-				queries = append(queries, fmt.Sprintf("%s=%v", dbName, value))
-			}
-		}
-	}
-
-	return strings.Join(queries, " AND ")
+	return nil
 }
 
 // ===================================
@@ -111,7 +79,7 @@ func createChannelCollection(app core.App) {
 		return
 	}
 
-	users, err := app.Dao().FindCollectionByNameOrId("users")
+	users, err := app.Dao().FindCollectionByNameOrId(users)
 	if err != nil {
 		log.Fatalf("users table not found: %+v", err)
 	}

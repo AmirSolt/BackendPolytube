@@ -1,11 +1,13 @@
-package models
+package cmodels
 
 import (
+	"basedpocket/base"
+
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 )
 
-func LoadModels(app *pocketbase.PocketBase, env *extension.Env) {
+func LoadModels(app *pocketbase.PocketBase, env *base.Env) {
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		// ===================
@@ -13,7 +15,7 @@ func LoadModels(app *pocketbase.PocketBase, env *extension.Env) {
 		createCustomersCollection(e.App)
 		createChannelCollection(e.App)
 		createOAuth2Collection(e.App)
-		createPlatformActivityCollection(e.App)
+		createActivityCollection(e.App)
 
 		return nil
 	})
