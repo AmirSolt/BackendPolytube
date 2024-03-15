@@ -15,7 +15,7 @@ func GetFieldTag(obj interface{}, fieldName string, tagName string) (string, *CE
 	if !ok {
 		err := fmt.Errorf("struct reflect failed. Struct: %+v | fieldName: %s | tagName: %s", obj, fieldName, tagName)
 		eventID := sentry.CaptureException(err)
-		return "", &CError{Message: "Internal Server Error", EventID: fmt.Sprintf("%v", &eventID)}
+		return "", &CError{Message: "Internal Server Error", EventID: *eventID}
 	}
 	return string(field.Tag.Get(tagName)), nil
 }
