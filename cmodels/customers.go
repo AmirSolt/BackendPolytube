@@ -1,12 +1,9 @@
 package cmodels
 
 import (
-	"basedpocket/utils"
 	"fmt"
 	"log"
 
-	"github.com/getsentry/sentry-go"
-	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/models"
 	"github.com/pocketbase/pocketbase/models/schema"
@@ -34,52 +31,6 @@ type FindCustomerParams struct {
 func (m *Customer) TableName() string {
 	return customers // the name of your collection
 }
-
-// ===================================
-
-func (customer *Customer) FindCustomer(app core.App, params *FindCustomerParams) *utils.CError {
-
-	query := dbx.HashExp{}
-	if params.Id != "" {
-		query["id"] = params.Id
-	}
-	if params.User != "" {
-		query["user"] = params.User
-	}
-	if params.StripeCustomerID != "" {
-		query["stripe_customer_id"] = params.StripeCustomerID
-	}
-	if params.StripeSubscriptionID != "" {
-		query["stripe_subscription_id"] = params.StripeSubscriptionID
-	}
-
-	err := app.Dao().ModelQuery(&Channel{}).
-		AndWhere(query).
-		Limit(1).
-		One(customer)
-
-	if err != nil {
-		eventID := sentry.CaptureException(err)
-		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
-	}
-	return nil
-}
-func (customer *Customer) SaveCustomer(app core.App) *utils.CError {
-	if err := app.Dao().Save(customer); err != nil {
-		eventID := sentry.CaptureException(err)
-		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
-	}
-	return nil
-}
-func (customer *Customer) DeleteCustomer(app core.App) *utils.CError {
-	if err := app.Dao().Delete(customer); err != nil {
-		eventID := sentry.CaptureException(err)
-		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
-	}
-	return nil
-}
-
-// ============================================
 
 // =======================================
 

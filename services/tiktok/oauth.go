@@ -114,7 +114,7 @@ func upsertTiktokDBOnNewAccess(app core.App, ctx echo.Context, env *base.Env, re
 	// ==========================
 	// find channel
 	var channel *cmodels.Channel
-	if err := channel.FindChannel(app, &cmodels.FindChannelParams{User: user.Id, ExternalID: response.OpenID}); err != nil {
+	if err := channel.Find(app, &cmodels.FindChannelParams{User: user.Id, ExternalID: response.OpenID}); err != nil {
 		return err
 	}
 	var oauth *cmodels.OAuth
@@ -129,7 +129,7 @@ func upsertTiktokDBOnNewAccess(app core.App, ctx echo.Context, env *base.Env, re
 			// ==========================
 			// update channel
 			channel.AccessExpiresIn = response.AccessTokenExpiresIn
-			if appError := channel.SaveChannel(app); appError != nil {
+			if appError := channel.Save(app); appError != nil {
 				return fmt.Errorf("points to eventID: %s", appError.EventID)
 			}
 			// ==========================
@@ -151,7 +151,7 @@ func upsertTiktokDBOnNewAccess(app core.App, ctx echo.Context, env *base.Env, re
 				ExternalID:      response.OpenID,
 				AccessExpiresIn: response.AccessTokenExpiresIn,
 			}
-			if appError := newChannel.SaveChannel(app); appError != nil {
+			if appError := newChannel.Save(app); appError != nil {
 				return fmt.Errorf("points to eventID: %s", appError.EventID)
 			}
 			// ==========================

@@ -1,12 +1,9 @@
 package cmodels
 
 import (
-	"basedpocket/utils"
 	"fmt"
 	"log"
 
-	"github.com/getsentry/sentry-go"
-	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/models"
 	"github.com/pocketbase/pocketbase/models/schema"
@@ -27,61 +24,14 @@ type OAuth struct {
 	RefreshToken          string          `db:"refresh_token" json:"refresh_token"`
 	RefreshTokenExpiresIn *types.DateTime `db:"refresh_token_expires_in" json:"refresh_token_expires_in"`
 }
-type FindOAuthParams struct {
-	Id           string `db:"id"`
-	User         string `db:"user"`
-	Channel      string `db:"channel"`
-	AccessToken  string `db:"access_token"`
-	RefreshToken string `db:"refresh_token"`
-}
 
 func (m *OAuth) TableName() string {
 	return oauths // the name of your collection
 }
 
-// ===================================
-
-func (oauth *OAuth) FindOAuth(app core.App, params *FindOAuthParams) *utils.CError {
-
-	query := dbx.HashExp{}
-	if params.Id != "" {
-		query["id"] = params.Id
-	}
-	if params.User != "" {
-		query["user"] = params.User
-	}
-	if params.Channel != "" {
-		query["channel"] = params.Channel
-	}
-	if params.AccessToken != "" {
-		query["access_token"] = params.AccessToken
-	}
-	if params.RefreshToken != "" {
-		query["refresh_token"] = params.RefreshToken
-	}
-
-	err := app.Dao().ModelQuery(&Channel{}).
-		AndWhere(query).
-		Limit(1).
-		One(oauth)
-
-	if err != nil {
-		eventID := sentry.CaptureException(err)
-		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
-	}
-	return nil
-}
-func (oauth *OAuth) SaveOAuth(app core.App) *utils.CError {
-	if err := app.Dao().Save(oauth); err != nil {
-		eventID := sentry.CaptureException(err)
-		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
-	}
-	return nil
-}
-
 // ============================================
 
-func createOAuth2Collection(app core.App) {
+func createOAuthCollection(app core.App) {
 
 	// OAuth 2.0
 	collectionName := oauths

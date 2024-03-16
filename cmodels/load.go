@@ -13,10 +13,11 @@ func LoadModels(app *pocketbase.PocketBase, env *base.Env) {
 		// ===================
 		// collections
 		createCustomersCollection(e.App)
+		createPlatformCollection(e.App)
 		createChannelCollection(e.App)
-		createOAuth2Collection(e.App)
 		createEventCollection(e.App)
 		createDubjobCollection(e.App)
+		createOAuthCollection(e.App)
 
 		return nil
 	})

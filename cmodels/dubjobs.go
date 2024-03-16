@@ -1,12 +1,9 @@
 package cmodels
 
 import (
-	"basedpocket/utils"
 	"fmt"
 	"log"
 
-	"github.com/getsentry/sentry-go"
-	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/models"
 	"github.com/pocketbase/pocketbase/models/schema"
@@ -36,40 +33,6 @@ type FindDubjobParams struct {
 
 func (m *Dubjob) TableName() string {
 	return dubjobs // the name of your collection
-}
-
-// ===================================
-
-func (dubjob *Dubjob) FindDubjob(app core.App, params *FindDubjobParams) *utils.CError {
-
-	query := dbx.HashExp{}
-	if params.Id != "" {
-		query["id"] = params.Id
-	}
-	if params.User != "" {
-		query["user"] = params.User
-	}
-	if params.ExternalID != "" {
-		query["external_id"] = params.ExternalID
-	}
-
-	err := app.Dao().ModelQuery(&Channel{}).
-		AndWhere(query).
-		Limit(1).
-		One(dubjob)
-
-	if err != nil {
-		eventID := sentry.CaptureException(err)
-		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
-	}
-	return nil
-}
-func (dubjob *Dubjob) SaveDubjob(app core.App) *utils.CError {
-	if err := app.Dao().Save(dubjob); err != nil {
-		eventID := sentry.CaptureException(err)
-		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
-	}
-	return nil
 }
 
 // ============================================

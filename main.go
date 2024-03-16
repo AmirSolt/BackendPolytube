@@ -2,8 +2,8 @@ package main
 
 import (
 	"basedpocket/base"
+	"basedpocket/cmodels"
 	"basedpocket/services/payment"
-	"basedpocket/services/tiktok"
 	"log"
 
 	"github.com/pocketbase/pocketbase"
@@ -17,8 +17,9 @@ func main() {
 	base.LoadLogging(env)
 	app := pocketbase.New()
 
+	cmodels.LoadModels(app, env)
 	payment.LoadPayment(app, env)
-	tiktok.LoadTiktok(app, env)
+	// tiktok.LoadTiktok(app, env)
 
 	if err := app.Start(); err != nil {
 		log.Fatal(err)

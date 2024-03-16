@@ -1,12 +1,9 @@
 package cmodels
 
 import (
-	"basedpocket/utils"
 	"fmt"
 	"log"
 
-	"github.com/getsentry/sentry-go"
-	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/models"
 	"github.com/pocketbase/pocketbase/models/schema"
@@ -53,41 +50,7 @@ type FindEventParams struct {
 }
 
 func (m *Event) TableName() string {
-	return events // the name of your collection
-}
-
-// ===================================
-
-func (event *Event) FindEvent(app core.App, params *FindEventParams) *utils.CError {
-
-	query := dbx.HashExp{}
-	if params.Id != "" {
-		query["id"] = params.Id
-	}
-	if params.User != "" {
-		query["user"] = params.User
-	}
-	if params.Channel != "" {
-		query["channel"] = params.Channel
-	}
-
-	err := app.Dao().ModelQuery(&Channel{}).
-		AndWhere(query).
-		Limit(1).
-		One(event)
-
-	if err != nil {
-		eventID := sentry.CaptureException(err)
-		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
-	}
-	return nil
-}
-func (event *Event) SaveEvent(app core.App) *utils.CError {
-	if err := app.Dao().Save(event); err != nil {
-		eventID := sentry.CaptureException(err)
-		return &utils.CError{Message: "Internal Server Error", EventID: *eventID, Error: err}
-	}
-	return nil
+	return events
 }
 
 // ============================================

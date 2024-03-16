@@ -20,9 +20,9 @@ type DubbingResponse struct {
 	ExpectedDurationSec int    `json:"expected_duration_sec"`
 }
 
-func GetDubFileURL() {
-	"https://api.elevenlabs.io/v1/dubbing/{dubbing_id}/audio/{language_code}"
-}
+// func GetDubFileURL() {
+// 	"https://api.elevenlabs.io/v1/dubbing/{dubbing_id}/audio/{language_code}"
+// }
 
 func RequestAndUpdateDubjob(app core.App, ctx echo.Context, env *base.Env, dubjob *cmodels.Dubjob) *utils.CError {
 
